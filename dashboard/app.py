@@ -861,56 +861,104 @@ def _build_insights(scored: pd.DataFrame, rep: dict) -> list[str]:
     return facts
 
 
-def _build_pdf_report(rep: dict) -> bytes:
-    """Render the analysis summary as a single-page PDF via matplotlib."""
+_PDF_TXN_COLS = ["transaction_id", "timestamp", "amount",
+                 "fraud_probability", "novelty_score", "risk_band",
+                 "rank_score"]
+
+
+def _build_pdf_report(rep: dict, scored: pd.DataFrame) -> bytes:
+    """Render an analysis report into a PDF: a summary page followed by a
+    full per-transaction table (amount + fraud probability + novelty +
+    risk band + rank for every scored row)."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    on = [name for name in TABLE_ORDER if name in rep]
-    fig = plt.figure(figsize=(11, max(8.5, 0.62 * max(len(on), 1) + 5)))
-    fig.suptitle("Unseen-Customer Fraud Detection - Analysis Summary",
-                 fontsize=14, fontweight="bold")
-    y = 0.97
-    seen = set(("file_name", "rows", "alerts", "thresholds", "has_label"))
-    off = {k: v for k, v in rep.items()
-           if k in TABLE_ORDER and k not in seen}
-    for g, val in off.items():
-        fig.text(0.03, y, g, fontsize=11, fontweight="bold", va="top")
-        if isinstance(val, dict):
-            val = pd.DataFrame([val])
-        if isinstance(val, pd.DataFrame):
-            val = val.to_string(max_rows=8)
-        else:
-            val = str(val)
-        fig.text(0.06, y, val, fontsize=9,
-                 va="top", family="monospace")
-        y -= 0.115
-    pdf = io.BytesIO()
-    fig.savefig(pdf, format="pdf")
-    plt.close(fig)
-    return pdf.getvalue()
+    from matplotlib.backends.backend_pdf import PdfPages
+    out = io.BytesIO()
+    with PdfPages(out) as pdf:
+        # ---- page 1: summary ----
+        on = [name for name in TABLE_ORDER if name in rep]
+        fig = plt.figure(figsize=(11, max(8.5, 0.62 * max(len(on), 1) + 5)))
+        fig.suptitle("Unseen-Customer Fraud Detection - Analysis Summary",
+                     fontsize=14, fontweight="bold")
+        y = 0.97
+        seen = set(("file_name", "rows", "alerts", "thresholds", "has_label"))
+        off = {k: v for k, v in rep.items()
+               if k in TABLE_ORDER and k not in seen}
+        for g, val in off.items():
+            fig.text(0.03, y, g, fontsize=11, fontweight="bold", va="top")
+            if isinstance(val, dict):
+                val = pd.DataFrame([val])
+            if isinstance(val, pd.DataFrame):
+                val = val.to_string(max_rows=8)
+            else:
+                val = str(val)
+            fig.text(0.06, y, val, fontsize=9,
+                     va="top", family="monospace")
+            y -= 0.115
+        pdf.savefig(fig)
+        plt.close(fig)
+        # ---- page 2+: full transaction table ----
+        if scored is not None and len(scored):
+            cols = [c for c in _PDF_TXN_COLS if c in scored.columns]
+            rows = scored[cols].copy()
+            disp = rows.to_string(index=False)
+            fig2 = plt.figure(figsize=(11, 8.5))
+            fig2.suptitle("Scored transactions (all rows)", fontsize=14,
+                          fontweight="bold")
+            ax = fig2.add_subplot(111)
+            ax.axis("off")
+            ax.text(0.01, 0.98, disp, fontsize=6, va="top",
+                    family="monospace")
+            pdf.savefig(fig2)
+            plt.close(fig2)
+    return out.getvalue()
 
 
 def _export_bytes(kind: str, scored: pd.DataFrame, rep: dict,
                   md_text: str) -> tuple:
-    """Generic exporter for *.csv / *.pdf / *.json / *.md / *.txt."""
+    """Generic exporter for *.csv / *.pdf / *.json / *.md / *.txt.
+
+    Every format carries the per-transaction values (amount, fraud
+    probability, novelty score, risk band, rank) - not just the summary."""
+    export_cols = [c for c in _PDF_TXN_COLS if c in scored.columns]
+    for extra in ("is_fraud", "budget_status", "explanation"):
+        if extra in scored.columns and extra not in export_cols:
+            export_cols.append(extra)
+    export_frame = scored[export_cols].copy() if len(export_cols) else scored
     if kind == "csv":
-        return scored.to_csv(index=False).encode("utf-8"), "csv"
+        return export_frame.to_csv(index=False).encode("utf-8"), "csv"
     if kind == "json":
         payload = dict(rep)
         payload["scored_transactions"] = scored.to_dict("records")
         return json.dumps(payload, default=str,
                           indent=2).encode("utf-8"), "json"
+    full_md = _format_transaction_table_markdown(export_frame, md_text)
     if kind == "markdown":
-        return md_text.encode("utf-8"), "md"
+        return full_md.encode("utf-8"), "md"
     if kind == "txt":
         alerts = len(scored[scored["budget_status"] == "alert"])
         head = (f"Analysis of {rep.get('filename', 'upload')} - "
                 f"{len(scored)} rows, {alerts} alert(s)\n\n")
-        return (head + md_text).encode("utf-8"), "txt"
+        return (head + full_md).encode("utf-8"), "txt"
     if kind == "pdf":
-        return _build_pdf_report(rep), "pdf"
+        return _build_pdf_report(rep, scored), "pdf"
     raise ValueError(f"unsupported export kind: {kind}")
+
+
+def _format_transaction_table_markdown(export_frame: pd.DataFrame,
+                                       md_text: str) -> str:
+    """Append every scored transaction as a markdown table to md_text."""
+    if len(export_frame) == 0:
+        return md_text
+    hdrs = list(export_frame.columns)
+    L = [md_text.rstrip(), "", "## Scored transactions (all rows)", ""]
+    L.append("| " + " | ".join(h.replace("_", " ") for h in hdrs) + " |")
+    L.append("|" + "---|" * len(hdrs))
+    for r in export_frame.itertuples(index=False):
+        L.append("| " + " | ".join(str(getattr(r, h)) for h in hdrs) + " |")
+    L.append("")
+    return "\n".join(L)
 
 
 def _render_export(scored: pd.DataFrame, rep: dict, md_text: str):
@@ -922,9 +970,9 @@ def _render_export(scored: pd.DataFrame, rep: dict, md_text: str):
     st.download_button(f"Download {kind.upper()} report",
                        data=data, mime="application/octet-stream",
                        file_name=f"{fname}.{ext}", key="download_export")
-    st.caption("CSV/JSON include every scored transaction; PDF is a compact "
-               "one-page summary; Markdown/txt include the full evaluation "
-               "report and key insights.")
+    st.caption("CSV/JSON/Markdown/txt/PDF all include every scored "
+               "transaction (amount, fraud probability, novelty score, "
+               "risk band, rank); PDF leads with a compact summary page.")
 
 
 def _render_hero():

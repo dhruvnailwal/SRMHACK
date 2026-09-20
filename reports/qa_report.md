@@ -1,15 +1,15 @@
 # QA Report - Unseen-Customer Fraud Detection
 
-Run finished in **8.1s** - **18/18 checks passed**.
+Run finished in **17.9s** - **18/18 checks passed**.
 
 | # | check | status | detail |
 |---|---|---|---|
 | 1 | A. app boots with no exceptions | PASS | 0 exception(s) |
 | 2 | B. three sections render (Overview / Upload / System eval) | PASS | sections: overview=True upload=True eval=True |
 | 3 | C1. Analyse button runs the pipeline | PASS | 0 exception(s) |
-| 4 | C2. System evaluation shows a dynamic file caption | PASS | Enable **Per-row explanations** before analysing to see factor-level reasons. Enable **Per-row explanations** before ana |
+| 4 | C2. System evaluation shows a dynamic file caption | PASS | CSV/JSON include every scored transaction; PDF is a compact one-page summary; Markdown/txt include the full evaluation r |
 | 5 | D. /health reports service state | PASS | ok |
-| 6 | E1. /predict returns risk decision | PASS | http 200 in 30ms |
+| 6 | E1. /predict returns risk decision | PASS | http 200 in 50ms |
 | 7 | E2. all four required fields present | PASS | fields=['alert', 'explanation', 'fraud_probability', 'novelty_score', 'rank_score', 'raw_probability', 'risk_band', 'tags', 'top_contributing_features', 'valid'] |
 | 8 | E3. probabilities in [0,1] | PASS | p=0.017 nov=0.087 |
 | 9 | E4. risk band is one of the four bands | PASS | normal |

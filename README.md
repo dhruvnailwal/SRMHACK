@@ -127,6 +127,8 @@ explanations (`top_contributing_features`).
 | artifact | purpose |
 |---|---|
 | `docs/DATA_JOURNEY.md` | frontend ↔ backend bridge: the full upload → stream → two-signals → budget lifecycle plus an output glossary (fraud probability, novelty, risk bands, top reasons) for non-technical stakeholders |
+| `docs/PITCH_DECK.md` | 7-slide, judge-ready pitch copy (Problem → Key Results) for the hackathon presentation |
+| `docs/PITCH_SCRIPT.md` | timed speaker script (25s/slide) walking the judges through the deck |
 | `docs/MASTER_SUBMISSION.md` | one beginner-friendly file with the full 7-section narrative (big picture, UI/UX, architecture, innovations, restriction compliance, measured results, judge Q&A) — zero-prior-knowledge readable |
 | `docs/STYLING_GUIDE.md` | UI/UX design language (dark/navy theme, Tailwind v4 utility spec, component breakdown) mapped 1:1 onto the shipped Streamlit dashboard |
 | `reports/qa_report.md` | end-to-end QA suite results (frontend upload flow, FastAPI endpoints, leakage + alert-budget constraints) |

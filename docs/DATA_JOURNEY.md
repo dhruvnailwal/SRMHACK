@@ -48,7 +48,8 @@ Every transaction passes through the same narrow pipe:
 
 ```
 read one row  →  validate  →  build features  →  fraud probability
-              →  novelty score  →  risk band  →  reasons  →  commit to history
+              →  novelty score  →  risk band  →  contributing factors
+              →  commit to history
 ```
 
 That pipe is the same whether you use the web dashboard, the FastAPI
@@ -283,14 +284,23 @@ hard per-hour/per-day caps run on top as final backstops.
 **Interpretation tip:** "normal + high novelty" is a *watch* case
 (amber), not an alert. "Review or high-risk" is a *today* case.
 
-### 2.4 Top Reasons (the plain-language explanation)
+### 2.4 Top Reasons — the contributing factors behind the score
 
-**What it is.** Each alert names its **top contributing factors** — the
-behaviours that pushed the score up — grouped into human families and
-phrased in plain language. The contributions are exact TreeSHAP values
-(per-feature contribution to the fraud probability) summed over *feature
-families* so that, for example, five velocity columns collapse into one
-sentence about velocity.
+> **Important, before anything else:** the system does **not** print "this is
+> the reason the transaction is fraud." Nobody in this pipeline knows the
+> true cause of a transaction — the model only estimates *which measurable
+> behaviours pushed the probability up*. So the correct name for this output
+> is **contributing factors** (internally: `top_contributing_features`).
+> When you read the card below, translate every phrase as "this factor
+> *contributed* to the score," never "this is why it's fraud."
+
+**What it is.** For each transaction, the model estimates the contribution
+of each behavioural feature to the fraud probability (via exact TreeSHAP
+values from the LightGBM trees — essentially: "if this feature had been
+average, how much lower would the score have been?"). Contributions are
+then **grouped into six human families** so that, for example, five
+velocity columns collapse into one sentence about velocity, and the top few
+families (by absolute contribution) are shown.
 
 **Where the phrases come from** (examples seen on real dashboards):
 
@@ -303,12 +313,18 @@ sentence about velocity.
 | merchant | "The merchant has not been observed previously (increases risk)." |
 | history | "First transaction for this customer; using segment-level baseline (increases risk)." |
 
-**How a human should read it.** Reasons are **contributions, not causes** —
-they say "these factors pushed the probability up," never "this is why it's
-fraud." Use them to (1) sanity-check the decision, (2) write the analyst's
-own investigation note, and (3) spot *novel-pattern* cases: when velocity,
-device-new, and merchant-new all appear together on a brand-new identity, a
-card-around-the-clock pattern is underway.
+**How a human should read it.** The listed items are **contributions, not
+causes** — they say "these factors moved the probability," never "this is
+why it got flagged as fraud." Use them to (1) sanity-check the decision,
+(2) write the analyst's own investigation note, and (3) spot *novel-pattern*
+cases: when velocity, device-new, and merchant-new all appear together on a
+brand-new identity, a card-around-the-clock pattern is underway.
+
+> **Reading the card title correctly.** The dashboard labels this card
+> "Top reasons," which is shorthand for *"factors that contributed most to
+> the score."* The full, precise name in the underlying data is
+> `top_contributing_features` — always a list of *contributions*, never a
+> declaration of guilt.
 
 ### 2.5 Bringing them together: one worked example
 
@@ -318,7 +334,8 @@ Suppose the dashboard shows:
 fraud probability  0.87        ← calibrated 87% suspect
 novelty score      0.93        ← more atypical than 93% of normal traffic
 risk band          high-risk   ← red
-top reasons        · Velocity elevated: 4 txns in last 5 min
+top reasons        · Velocity elevated: 4 txns in last 5 min (contributed
+                     ↑ to the score)
                    · Amount is 2.4 sd above the historical baseline
                    · The merchant has not been observed previously
 ```
