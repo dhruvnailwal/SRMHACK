@@ -1,0 +1,9 @@
+# Local raw datasets exceed GitHub's file-size limits
+data/raw/ieee_cis_canonical.csv
+data/raw/test_transaction.csv
+data/raw/train_transaction.csv
+
+# Local Python and tool caches
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/

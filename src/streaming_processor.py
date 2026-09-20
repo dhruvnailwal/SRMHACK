@@ -255,6 +255,17 @@ class StreamingProcessor:
             self.engine.commit_row(txn)
 
         valid = [i for i in range(n) if not err_mask[i]]
+        if not valid:
+            out: list[dict] = [None] * n
+            for i in range(n):
+                out[i] = {"valid": False, "fraud_probability": None,
+                          "raw_probability": None, "novelty_score": None,
+                          "risk_band": "invalid", "alert": False,
+                          "budget_status": "log", "rank_score": None,
+                          "tags": None, "top_contributing_features": [],
+                          "positive_contributors": [],
+                          "negative_contributors": [], "explanation": None}
+            return out
         X = pd.DataFrame([feats[i] for i in valid])[self.features]
 
         rawer = np.asarray(self.model.predict_proba(X)[:, 1])
@@ -316,4 +327,11 @@ class StreamingProcessor:
             r["amount"] = float(row.amount)
             r["is_fraud"] = int(row.is_fraud)
             outputs.append(r)
-        return pd.DataFrame(outputs)
+        cols = ["valid", "fraud_probability", "raw_probability",
+                "novelty_score", "risk_band", "alert", "budget_status",
+                "rank_score", "tags", "top_contributing_features",
+                "positive_contributors", "negative_contributors",
+                "explanation", "transaction_id", "timestamp", "ts_sec",
+                "customer_id", "merchant_id", "device_id", "amount",
+                "is_fraud"]
+        return pd.DataFrame(outputs, columns=cols)

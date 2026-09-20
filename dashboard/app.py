@@ -723,38 +723,46 @@ def _render_cached_results(ctx: dict):
 
 def _run_and_render(data, fname, backend, api_url, expl, ctx):
     """Shared run path used by both upload branches."""
-    with st.spinner("Validating and scoring…"):
-        df, schema = _load_upload_frame(data, fname)
-        valid = bool(schema == SCHEMA_DOC)
-        if backend == "api":
-            try:
-                scored = _score_via_api(df, api_url)
-            except RuntimeError:
-                st.warning("FastAPI service unreachable - falling back to "
-                           "in-process (local joblib) scoring.")
+    try:
+        with st.spinner("Validating and scoring…"):
+            df, schema = _load_upload_frame(data, fname)
+            valid = bool(schema == SCHEMA_DOC)
+            if backend == "api":
+                try:
+                    scored = _score_via_api(df, api_url)
+                except RuntimeError:
+                    st.warning("FastAPI service unreachable - falling back to "
+                               "in-process (local joblib) scoring.")
+                    scored = _score_upload_impl(data, fname, expl, False)["scored"]
+            else:
                 scored = _score_upload_impl(data, fname, expl, False)["scored"]
-        else:
-            scored = _score_upload_impl(data, fname, expl, False)["scored"]
-        scored = _add_unseen_flag(scored, ctx["train_customers"])
-        scored, newthr = _recompute_bands(
-            scored, ctx, float(ctx["cfg"].risk["alert_budget_pct"]))
-        model_metrics = _metric_summary_from_scored(scored)
-        res = {"scored": scored, "filename": fname, "mapped": schema.mapping,
-               "unmapped": schema.unmapped,
-               "has_label": model_metrics is not None,
-               }
-        rep = _build_analysis_report(res, ctx)
-        rep["valid"] = valid
-        rep["thresholds"] = newthr
-        rep["label_metrics"] = model_metrics
-        insights = _build_insights(scored, rep)
-        rep["insights"] = insights
-        md_text = _format_analysis_markdown(rep)
-        st.success(f"File **{fname}** analysed — {len(scored):,} rows "
-                   f"scored, {rep['alerts']['alerts_fired']:,} alerts")
-    st.session_state["up_analysis"] = {
-        "scored": scored, "rep": rep, "md_text": md_text,
-        "backend": backend, "expl": expl}
+            scored = _add_unseen_flag(scored, ctx["train_customers"])
+            scored, newthr = _recompute_bands(
+                scored, ctx, float(ctx["cfg"].risk["alert_budget_pct"]))
+            model_metrics = _metric_summary_from_scored(scored)
+            res = {"scored": scored, "filename": fname, "mapped": schema.mapping,
+                   "unmapped": schema.unmapped,
+                   "has_label": model_metrics is not None,
+                   }
+            rep = _build_analysis_report(res, ctx)
+            rep["valid"] = valid
+            rep["thresholds"] = newthr
+            rep["label_metrics"] = model_metrics
+            insights = _build_insights(scored, rep)
+            rep["insights"] = insights
+            md_text = _format_analysis_markdown(rep)
+            st.success(f"File **{fname}** analysed — {len(scored):,} rows "
+                       f"scored, {rep['alerts']['alerts_fired']:,} alerts")
+        st.session_state["up_analysis"] = {
+            "scored": scored, "rep": rep, "md_text": md_text,
+            "backend": backend, "expl": expl}
+    except ValueError as exc:
+        st.error(f"Could not analyse **{fname}**: {exc}")
+        st.caption("The file must contain columns the pipeline can map: "
+                   "`transaction_id`, `timestamp`, `amount`, `customer_id`, "
+                   "`merchant_id`, `device_id` (optionally `is_fraud`). "
+                   "Check the header row — no blank/duplicate names, and "
+                   "timestamps like `2024-05-01 10:30:00`.")
 
 
 def _render_upload_results(scored: pd.DataFrame, rep: dict, md_text: str,

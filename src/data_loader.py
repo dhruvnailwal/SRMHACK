@@ -98,6 +98,10 @@ def load_dataframe(cfg: Settings, path: str | None = None,
     dup_dropped = before - len(df)
 
     # ---- type coercion ----
+    if "amount" in df.columns and df["amount"].dtype == object:
+        df["amount"] = (df["amount"].astype(str)
+                        .str.replace(r",(?=\d{3}(?:\.\d*)?$)", "",
+                                     regex=True))
     df["amount"] = pd.to_numeric(df["amount"], errors="coerce")
     df["is_fraud"] = pd.to_numeric(df["is_fraud"], errors="coerce").fillna(0).astype(int)
     df["amount"] = df["amount"].where(df["amount"] > 0)
