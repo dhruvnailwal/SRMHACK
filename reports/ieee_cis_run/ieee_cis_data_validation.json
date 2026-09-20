@@ -1,0 +1,126 @@
+{
+  "report_generated_at": "2026-09-19T20:52:42.965591+00:00",
+  "rows": 300000,
+  "columns": 17,
+  "dtypes": {
+    "transaction_id": "int64",
+    "timestamp": "datetime64[ns, UTC]",
+    "amount": "float64",
+    "customer_id": "object",
+    "merchant_id": "object",
+    "device_id": "object",
+    "transaction_hour": "int64",
+    "is_fraud": "int64",
+    "ProductCD": "object",
+    "card2": "float64",
+    "card5": "float64",
+    "addr2": "float64",
+    "dist1": "float64",
+    "P_emaildomain": "object",
+    "R_emaildomain": "object",
+    "ts_sec": "int64",
+    "is_night": "int64"
+  },
+  "missing_values": {
+    "card2": 4753,
+    "card5": 1608,
+    "addr2": 33408,
+    "dist1": 186763,
+    "P_emaildomain": 47208,
+    "R_emaildomain": 216931
+  },
+  "duplicates_in_transaction_id": 0,
+  "duplicate_txns_dropped_at_load": 0,
+  "class_distribution": {
+    "0": 289901,
+    "1": 10099
+  },
+  "fraud_count": 10099,
+  "fraud_percent": 3.3663,
+  "unique_counts": {
+    "customers": 11162,
+    "merchants": 300,
+    "devices": 1417
+  },
+  "timestamp_range": {
+    "min": "2017-11-01 00:00:00+00:00",
+    "max": "2018-01-24 19:43:51+00:00",
+    "days_span": 84.8
+  },
+  "numerical_summary": {
+    "amount": {
+      "mean": 132.3861,
+      "std": 236.4306,
+      "min": 0.292,
+      "p25": 42.442,
+      "median": 68.5,
+      "p75": 125.0,
+      "max": 31937.391
+    },
+    "transaction_hour": {
+      "mean": 13.804,
+      "std": 7.7031,
+      "min": 0.0,
+      "p25": 5.0,
+      "median": 16.0,
+      "p75": 20.0,
+      "max": 23.0
+    }
+  },
+  "categorical_summary": {
+    "is_night": {
+      "0": 204041,
+      "1": 95959
+    },
+    "is_fraud": {
+      "0": 289901,
+      "1": 10099
+    }
+  },
+  "load_meta": {
+    "path": "C:\\Users\\91807\\Desktop\\SRMHACK\\data/raw/ieee_cis_canonical.csv",
+    "rows_loaded": 590540,
+    "duplicate_txns_dropped": 0,
+    "unparseable_timestamps": 0,
+    "unmapped_optional_columns": [
+      "is_night",
+      "new_customer",
+      "new_merchant",
+      "new_device",
+      "velocity_8min",
+      "amount_spike",
+      "customer_history_count",
+      "merchant_history_count",
+      "device_history_count"
+    ],
+    "columns": [
+      "transaction_id",
+      "timestamp",
+      "amount",
+      "customer_id",
+      "merchant_id",
+      "device_id",
+      "transaction_hour",
+      "is_fraud",
+      "ProductCD",
+      "card2",
+      "card5",
+      "addr2",
+      "dist1",
+      "P_emaildomain",
+      "R_emaildomain",
+      "ts_sec",
+      "is_night"
+    ]
+  },
+  "column_mapping_used": {
+    "transaction_id": "transaction_id",
+    "timestamp": "timestamp",
+    "customer_id": "customer_id",
+    "merchant_id": "merchant_id",
+    "device_id": "device_id",
+    "amount": "amount",
+    "transaction_hour": "transaction_hour",
+    "is_fraud": "is_fraud"
+  }
+}

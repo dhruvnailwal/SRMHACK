@@ -1,0 +1,47 @@
+# ============================================================
+# IEEE-CIS Fraud Detection (real dataset) run configuration.
+#
+# Overrides ONLY the dataset source; every other knob inherits
+# the defaults from src/config.py / config.yaml. The adapter
+# (scripts/adapt_ieee_cis.py) maps the real schema onto the
+# canonical streaming schema (card1 -> customer, addr1 -> merchant
+# proxy, DeviceType|DeviceInfo -> device, TransactionDT -> time).
+#
+# Because the split columns, risk matrix and alert budget all stay
+# untouched, the *architecture* is identical to the synthetic run -
+# this file proves the pipeline is dataset-agnostic, not tuned to
+# one generator.
+#
+# The models section here is intentionally lighter than the
+# synthetic default: this is a *feasibility* run for the real
+# dataset (which has no merchant/device columns natively), so we
+# compare LightGBM variants rather than the full LR/RF/LGBM trio
+# that take tens of minutes on 300k+ rows. Re-enable the full
+# compare list + full 590k rows for a tuned benchmark.
+# ============================================================
+
+project:
+  name: "IEEE-CIS Fraud Detection - Unseen-Customer Streaming Prototype"
+
+data:
+  raw_file: "data/raw/ieee_cis_canonical.csv"
+  processed_dir: "data/processed_ieee"
+  database_note: >
+    Real IEEE-CIS transactions adapted to the canonical streaming schema by
+    scripts/adapt_ieee_cis.py. Identity-free: raw card/addr/device values
+    only key the internal streaming state, never appear as model features.
+
+models:
+  compare: ["lightgbm"]
+  primary: "lightgbm"
+  lightgbm:
+    scale_pos_weight: "auto"
+    num_leaves: 31
+    min_child_samples: 60
+    learning_rate: 0.1
+    n_estimators: 200
+    subsample: 0.9
+    subsample_freq: 1
+    colsample_bytree: 0.8
+    reg_lambda: 5.0
+    verbosity: -1

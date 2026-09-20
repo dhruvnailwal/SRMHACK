@@ -77,29 +77,37 @@ def make_all_figures(df_eda: pd.DataFrame, scores: pd.DataFrame,
 
     # 4. New vs known customers ---------------------------------------------
     fig, ax = plt.subplots(figsize=(7, 4))
-    g = df_eda.groupby("new_customer")["is_fraud"].agg(["count", "mean"])
-    bars = ax.bar(["known customer", "new customer"], g["mean"] * 100,
-                  color=["#66bb6a", "#ef5350"])
-    for b, row in zip(bars, g.iterrows()):
-        ax.text(b.get_x() + b.get_width() / 2, b.get_height(),
-                f"{row[1]['count']:,}\n{row[1]['mean']*100:.2f}%",
-                ha="center", va="bottom", fontsize=9)
-    ax.set_title("4. Fraud Rate for New vs Known Customers")
-    ax.set_ylabel("Fraud rate (%)")
+    if "new_customer" in df_eda.columns:
+        g = df_eda.groupby("new_customer")["is_fraud"].agg(["count", "mean"])
+        bars = ax.bar(["known customer", "new customer"], g["mean"] * 100,
+                      color=["#66bb6a", "#ef5350"])
+        for b, row in zip(bars, g.iterrows()):
+            ax.text(b.get_x() + b.get_width() / 2, b.get_height(),
+                    f"{row[1]['count']:,}\n{row[1]['mean']*100:.2f}%",
+                    ha="center", va="bottom", fontsize=9)
+        ax.set_title("4. Fraud Rate for New vs Known Customers")
+        ax.set_ylabel("Fraud rate (%)")
+    else:
+        ax.text(0.5, 0.5, "column not available in this schema",
+                ha="center", va="center")
     _save(fig, "04_new_vs_known_customers.png", cfg)
     written.append("04_new_vs_known_customers.png")
 
     # 5. New vs known devices ------------------------------------------------
     fig, ax = plt.subplots(figsize=(7, 4))
-    g = df_eda.groupby("new_device")["is_fraud"].agg(["count", "mean"])
-    bars = ax.bar(["known device", "new device"], g["mean"] * 100,
-                  color=["#66bb6a", "#ef5350"])
-    for b, row in zip(bars, g.iterrows()):
-        ax.text(b.get_x() + b.get_width() / 2, b.get_height(),
-                f"{row[1]['count']:,}\n{row[1]['mean']*100:.2f}%",
-                ha="center", va="bottom", fontsize=9)
-    ax.set_title("5. Fraud Rate for New vs Known Devices")
-    ax.set_ylabel("Fraud rate (%)")
+    if "new_device" in df_eda.columns:
+        g = df_eda.groupby("new_device")["is_fraud"].agg(["count", "mean"])
+        bars = ax.bar(["known device", "new device"], g["mean"] * 100,
+                      color=["#66bb6a", "#ef5350"])
+        for b, row in zip(bars, g.iterrows()):
+            ax.text(b.get_x() + b.get_width() / 2, b.get_height(),
+                    f"{row[1]['count']:,}\n{row[1]['mean']*100:.2f}%",
+                    ha="center", va="bottom", fontsize=9)
+        ax.set_title("5. Fraud Rate for New vs Known Devices")
+        ax.set_ylabel("Fraud rate (%)")
+    else:
+        ax.text(0.5, 0.5, "column not available in this schema",
+                ha="center", va="center")
     _save(fig, "05_new_vs_known_devices.png", cfg)
     written.append("05_new_vs_known_devices.png")
 

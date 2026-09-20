@@ -122,6 +122,20 @@ explanations (`top_contributing_features`).
 
 ---
 
+## Delivery artifacts
+
+| artifact | purpose |
+|---|---|
+| `docs/MASTER_SUBMISSION.md` | one beginner-friendly file with the full 7-section narrative (big picture, UI/UX, architecture, innovations, restriction compliance, measured results, judge Q&A) — zero-prior-knowledge readable |
+| `docs/STYLING_GUIDE.md` | UI/UX design language (dark/navy theme, Tailwind v4 utility spec, component breakdown) mapped 1:1 onto the shipped Streamlit dashboard |
+| `reports/qa_report.md` | end-to-end QA suite results (frontend upload flow, FastAPI endpoints, leakage + alert-budget constraints) |
+| `reports/ieee_cis_run/` | the *same* unmodified pipeline run against the real IEEE-CIS benchmark through a schema adapter (`scripts/adapt_ieee_cis.py`, `config.ieee_cis.yaml`) — architecture transfer proof |
+
+Regenerate the QA suite anytime with `python scripts/qa_suite.py` (18 checks);
+re-run the IEEE-CIS feasibility run with
+`python scripts/adapt_ieee_cis.py` then
+`python run_pipeline.py --config config.ieee_cis.yaml --limit 300000`.
+
 ## Reproducibility
 
 * Synthetic data: `scripts/generate_dataset.py` – fixed seed, documented schema.

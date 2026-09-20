@@ -162,9 +162,12 @@ def main(argv=None):
     ap.add_argument("--limit", type=int, default=None,
                     help="optional: only process the first N transactions "
                          "(development smoke runs)")
+    ap.add_argument("--config", default=None,
+                    help="optional: path to an alternative config YAML "
+                         "(e.g. config.ieee_cis.yaml for the real dataset)")
     opts = ap.parse_args(argv)
 
-    cfg = get_settings()
+    cfg = get_settings(opts.config) if opts.config else get_settings()
     _seed(cfg)
     print(f"== {cfg.name} ==")
     print(f"seed={cfg.seed}  primary={cfg.models['primary']}")
@@ -194,6 +197,7 @@ def main(argv=None):
 
     # ---------------- 4. full feature replay + parity --------------------
     print("[4/10] leakage-safe feature replay (all folds, one path) ...")
+    os.makedirs(cfg.processed_dir(), exist_ok=True)
     combined = pd.concat([train, val, test], ignore_index=True)
     combined = combined.sort_values(["ts_sec", "transaction_id"]) \
                        .reset_index(drop=True)

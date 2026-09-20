@@ -39,7 +39,7 @@ ALIASES = {
 class SchemaMap:
     """Resolves raw columns to canonical names, recording every mapping."""
 
-    def __init__(self, columns, aliases=None):
+    def __init__(self, columns, aliases=None, require_label=True):
         aliases = aliases or ALIASES
         col_lookup = {str(c).strip().lower(): c for c in columns}
         self.mapping = {}
@@ -55,7 +55,9 @@ class SchemaMap:
             else:
                 self.unmapped.append(canonical)
         self.required = ["transaction_id", "timestamp", "amount", "customer_id",
-                         "merchant_id", "device_id", "is_fraud"]
+                         "merchant_id", "device_id"]
+        if require_label:
+            self.required.append("is_fraud")
         self.missing_required = [c for c in self.required if c not in self.mapping]
 
     def rename(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -63,11 +65,13 @@ class SchemaMap:
         return df.rename(columns=rename_map)
 
 
-def load_dataframe(cfg: Settings, path: str | None = None) -> tuple[pd.DataFrame, SchemaMap]:
+def load_dataframe(cfg: Settings, path: str | None = None,
+                   require_label: bool = True) -> tuple[pd.DataFrame, SchemaMap]:
     """Load, map, coerce and chronologically sort the raw CSV.
 
     Returns (canonical_df, schema_map). Raises ValueError if any required
-    canonical column cannot be mapped.
+    canonical column cannot be mapped. ``require_label=False`` allows
+    scoring unlabelled files (``is_fraud`` is filled with 0).
     """
     path = path or cfg.raw_path()
     if not os.path.exists(path):
@@ -77,12 +81,16 @@ def load_dataframe(cfg: Settings, path: str | None = None) -> tuple[pd.DataFrame
         )
     df = pd.read_csv(path)
 
-    schema = SchemaMap(df.columns)
+    schema = SchemaMap(df.columns, require_label=require_label)
     if schema.missing_required:
         raise ValueError("Required columns missing after alias mapping: "
                          + ", ".join(schema.missing_required))
 
     df = schema.rename(df)
+
+    # ---- treat a missing label as all-legitimate when scoring unlabelled ----
+    if not require_label and "is_fraud" not in df.columns:
+        df["is_fraud"] = 0
 
     # ---- drop whole-row duplicates on the transaction id ----
     before = len(df)

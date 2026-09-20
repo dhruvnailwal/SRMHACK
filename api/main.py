@@ -108,6 +108,18 @@ def _read_thresholds(models_dir: str) -> dict:
         return json.load(fh)
 
 
+def _ensure_hours(frame: pd.DataFrame):
+    """Fill null transaction_hour and ts_sec from the parsed timestamp."""
+    if "transaction_hour" not in frame.columns:
+        frame["transaction_hour"] = None
+    ts = pd.to_datetime(frame["timestamp"], utc=True)
+    frame["ts_sec"] = ts.astype("int64") / 1e9
+    missing = frame["transaction_hour"].isna()
+    if missing.any():
+        frame.loc[missing, "transaction_hour"] = ts.dt.hour
+    frame["transaction_hour"] = frame["transaction_hour"].astype(int)
+
+
 def _load_leaderboard() -> dict:
     import json
     with open(os.path.join(cfg.models_dir(), "model_comparison.json")) as fh:
@@ -150,30 +162,29 @@ def predict_batch(req: BatchRequest):
     if not req.transactions:
         return []
     proc = _build_processor()
-    order = sorted(range(len(req.transactions)),
-                   key=lambda i: pd.to_datetime(
-                       req.transactions[i].timestamp, utc=True).timestamp())
+    frame = pd.DataFrame([{
+        "timestamp": p.timestamp,
+        "amount": float(p.amount),
+        "customer_id": p.customer_id,
+        "merchant_id": p.merchant_id,
+        "device_id": p.device_id,
+        "transaction_hour": p.transaction_hour,
+    } for p in req.transactions])
+    _ensure_hours(frame)
+    frame["_req_index"] = range(len(frame))
+    chronological = frame.sort_values("timestamp").reset_index(drop=True)
+    results = proc.score_batch(chronological)
     out: list[dict] = [None] * len(req.transactions)
-    for i in order:
-        p = req.transactions[i]
-        ts = pd.to_datetime(p.timestamp, utc=True)
-        hour = p.transaction_hour if p.transaction_hour is not None \
-            else int(ts.hour)
-        txn = {"timestamp": p.timestamp, "ts_sec": float(ts.timestamp()),
-               "amount": float(p.amount),
-               "customer_id": p.customer_id,
-               "merchant_id": p.merchant_id,
-               "device_id": p.device_id,
-               "transaction_hour": hour}
-        res = proc.score_transaction(txn)
+    for pos, res in enumerate(results):
+        idx = int(chronological.iloc[pos]["_req_index"])
         if not res.get("valid"):
             raise HTTPException(
-                status_code=400, detail={"row_index": i,
-                                         **dict(res.get("errors", {}))})
+                status_code=400, detail={"row_index": idx, **res.get("errors", {})})
+        p = req.transactions[idx]
         if not p.include_explanation:
             res["top_contributing_features"] = []
             res["explanation"] = ""
-        out[i] = Decision(**{k: res.get(k) for k in Decision.model_fields})
+        out[idx] = Decision(**{k: res.get(k) for k in Decision.model_fields})
     return out
 
 
